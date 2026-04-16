@@ -27,10 +27,13 @@ A stateless JWT-based authentication system with login only (no registration flo
 - `email`: required, must not be empty string
 - `password`: required, must not be empty string
 
+**Rate limiting:** POST `/auth/login` is rate-limited to 5 attempts per 15 minutes per IP using `express-rate-limit`. When the limit is exceeded, returns HTTP 429 with message `"Too many login attempts. Please try again later."` Standard `RateLimit-*` headers are returned; legacy `X-RateLimit-*` headers are disabled.
+
 **Server-side error messages:**
 - Empty email or password: `"Provide email and password."` (400)
 - Email not found: `"User not found."` (401)
 - Wrong password: `"Unable to authenticate the user"` (401)
+- Rate limit exceeded: `"Too many login attempts. Please try again later."` (429)
 - Server error: `"Error during login"` (500)
 
 **Client-side error handling:** Displays the server's error message directly from `error.response.data.message`.
@@ -60,7 +63,7 @@ npx ts-node prisma/change-password.ts
 
 The script prompts interactively for:
 1. Admin email address (must exist in the database)
-2. New password (minimum 6 characters)
+2. New password (minimum 18 characters)
 3. Password confirmation (must match)
 
 It then bcrypt-hashes the new password (10 salt rounds) and updates the user record directly in the database.
@@ -73,7 +76,8 @@ It then bcrypt-hashes the new password (10 salt rounds) and updates the user rec
 
 - **Server:** Express 4.x, `express-jwt` for token validation middleware, stateless (no sessions)
 - **JWT:** HMAC-SHA256 via `jsonwebtoken`, secret from `TOKEN_SECRET` env var, claims: `id`, `email`, `name`
-- **Password:** bcrypt with 10 salt rounds, compared using `bcrypt.compareSync()`
+- **Password:** bcrypt with 10 salt rounds, compared using `bcrypt.compareSync()`, minimum 18 characters (enforced by CLI utility)
+- **Rate limiting:** `express-rate-limit` on POST `/auth/login`, 5 attempts per 15 minutes per IP
 - **Client:** React 19, react-router-dom v6, controlled form inputs with `useState`
 - **Auth state:** React Context (`AuthContext`) with token verification on app load via `useEffect`
 - **Route protection:** `IsPrivate` component wrapping children, `IsAnon` component wrapping login page
@@ -86,8 +90,7 @@ It then bcrypt-hashes the new password (10 salt rounds) and updates the user rec
 - No signup/registration page -- admin user is seeded directly in the database
 - No refresh token mechanism -- user must re-login after 6h
 - No password reset/change in the UI -- handled via CLI utility (see above)
-- No rate limiting on auth endpoints
-- No account lockout / brute force protection
+- No account lockout / brute force protection -- single-admin DoS risk outweighs benefit; mitigated by 18-char password minimum and IP rate limiting
 - No email verification
 - No user CRUD endpoints
 - No role-based access control (single admin user)
@@ -107,7 +110,7 @@ It then bcrypt-hashes the new password (10 salt rounds) and updates the user rec
 - `server/src/middleware/jwt.middleware.ts`
 
 **3. Auth Routes**
-**What:** POST `/auth/login` -- validates non-empty email/password, looks up user by email, compares bcrypt password, signs JWT with {id, email, name} payload and 6h expiry. GET `/auth/verify` -- protected by `isAuthenticated` middleware, returns decoded token payload.
+**What:** POST `/auth/login` -- rate-limited (5 attempts per 15 min per IP via `express-rate-limit`), validates non-empty email/password, looks up user by email, compares bcrypt password, signs JWT with {id, email, name} payload and 6h expiry. GET `/auth/verify` -- protected by `isAuthenticated` middleware, returns decoded token payload.
 **Files:**
 - `server/src/routes/auth.routes.ts`
 
@@ -122,7 +125,7 @@ It then bcrypt-hashes the new password (10 salt rounds) and updates the user rec
 - `server/src/app.ts`
 
 **6. Password Change Utility**
-**What:** Interactive CLI script using readline. Looks up user by email, validates new password (min 6 chars, confirmation match), bcrypt-hashes it (10 salt rounds), and updates the database via Prisma.
+**What:** Interactive CLI script using readline. Looks up user by email, validates new password (min 18 chars, confirmation match), bcrypt-hashes it (10 salt rounds), and updates the database via Prisma.
 **Files:**
 - `server/prisma/change-password.ts`
 
