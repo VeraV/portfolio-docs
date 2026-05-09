@@ -130,6 +130,14 @@ Rendered below the last step when `showCreateStepForm` is true. Only available w
 - **Cascade delete:** Steps are deleted when their parent manual is deleted
 - **Refresh on mutation:** Both create and update trigger `fetchProjectData()` to refresh the entire page
 
+### Must Not
+
+- Do not let the client supply a `step_number` on create — the server controls it inside the `$transaction`
+- Do not allow PATCH to mutate `step_number` or `manualId`; only `description` and `image_url` are editable
+- Do not expose POST/PATCH without `isAuthenticated`
+- Do not render an empty steps section to the public when no active manual has steps (visible only when admin is logged in or steps exist)
+- Do not allow creating a step when no active manual exists; the client must alert and refuse
+
 ### Out of Scope
 
 - No step deletion (individual steps cannot be removed)
@@ -148,15 +156,21 @@ Rendered below the last step when `showCreateStepForm` is true. Only available w
 **Files:**
 - `server/src/routes/step.routes.ts` (lines 9-41)
 
+**Verify:** `npm test -- steps` (in `server/`) — covers 401, 400, auto-incremented `step_number` (existing → max+1), and `step_number = 1` for an empty manual.
+
 **2. Step Update Route**
 **What:** PATCH `/api/steps/:stepId` -- protected. Validates required fields (`description`, `image_url`). Updates only description and image_url.
 **Files:**
 - `server/src/routes/step.routes.ts` (lines 43-60)
 
+**Verify:** `npm test -- steps` (in `server/`) — covers 401, 400, and that `step_number` and `manualId` stay unchanged across the update.
+
 **3. Request Type Definitions**
 **What:** `RequestCreateManualStep` (body: `manualId`, `description`, `image_url`) and `RequestUpdateStep` (body: `description`, `image_url`).
 **Files:**
 - `server/src/types/requests.ts` (lines 64-77)
+
+**Verify:** No tests — type-only, intentionally not covered.
 
 ### Client
 
@@ -165,16 +179,54 @@ Rendered below the last step when `showCreateStepForm` is true. Only available w
 **Files:**
 - `client/src/services/step.service.js`
 
+**Verify:** No tests cover this task yet.
+
 **5. StepItem Component**
 **What:** Renders a single step in timeline layout. Manages own `isEditing` state and `editData`. Read mode: step number circle, description (with admin edit button), image, connecting line. Edit mode: textarea, Cloudinary upload, save/cancel buttons. On save calls `stepService.update()` then `onStepUpdated()`.
 **Files:**
 - `client/src/components/StepItem/StepItem.jsx`
+
+**Verify:** No tests cover this task yet.
 
 **6. ProjectPage Step Section**
 **What:** Bottom section of ProjectPage. Renders `StepItem` components for each step in the active manual. Admin-only: green "+" button to open create form, inline form with description textarea, Cloudinary upload, and disabled-until-complete save button. Validates active manual exists before creating.
 **Files:**
 - `client/src/pages/ProjectPage/ProjectPage.jsx` (lines 36-41, 144-172, 486-572)
 
+**Verify:** No tests cover this task yet.
+
+## Validation
+
+End-to-end verification after all tasks complete.
+
+### Automated checks
+
+- Server-side: `npm test -- steps` (in `server/`) — covers POST/PATCH including the auto-increment logic
+- Full server suite: `npm test` (in `server/`)
+- E2E: no spec written yet
+
+### Manual checks (UI)
+
+1. Log in as admin → visit `/projects/:id` of a project with an active manual → bottom section shows the timeline + green "+" button
+2. Click "+" → inline form appears → leave description blank → "Save" stays disabled → fill description → upload image via Cloudinary → "Save" enables → click → new step appears at the end with `step_number = max + 1`
+3. Click pencil on an existing step → description textarea + Cloudinary widget appear → modify → Save → step returns to read mode with updated content
+4. Click "+" while no manual is active → alert "No active manual found. Please set a manual as active first."
+5. Log out → revisit page → green "+" and pencil icons are gone; timeline still renders if there are public steps
+6. With no active manual and not logged in → bottom section is hidden entirely
+
+### Cross-feature dependencies
+
+- `manual-management-spec.md` — at least one active manual must exist for steps to be creatable; cascade delete here is triggered there
+- `project-details-spec.md` — the public timeline rendering happens through the project GET (which only includes active manual steps)
+- `auth-spec.md` — admin gating on the create form and edit pencil
+- Cloudinary widget (CloudinaryUpload component, see `project-crud-spec.md`) for image uploads
+
 ## Current State
 
-Fully implemented on both client and server. No existing tests.
+Fully implemented on both client and server.
+
+**Tests in place:**
+- `server/tests/steps.test.ts` — 7 integration tests covering POST (auth, validation, auto-increment, empty-manual case) and PATCH (auth, validation, immutability of step_number/manualId)
+
+**Untested:**
+- Client `stepService`, `StepItem` component (edit/cancel flow), and the create-step form in ProjectPage

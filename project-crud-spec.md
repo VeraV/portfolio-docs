@@ -124,6 +124,14 @@ A two-column picker for associating technologies with a project.
 - **Confirm dialog:** Delete uses native `window.confirm()`, not a custom modal
 - **Refresh on mutation:** After any create/update/delete, `fetchData()` re-fetches all projects and technologies
 
+### Must Not
+
+- Do not expose POST/PUT/DELETE without `isAuthenticated`
+- Do not "patch" the tech stack on update — the route deletes all existing junction rows and recreates them; partial syncs are not supported
+- Do not skip the cascade on delete; junction rows, manuals, and steps must all be removed
+- Do not bypass the confirm dialog on delete; native `window.confirm` is the contract
+- Do not write a custom file uploader — Cloudinary widget is the only path
+
 ### Out of Scope
 
 - No client-side form validation beyond HTML `required` attributes and `type="url"`
@@ -142,20 +150,28 @@ A two-column picker for associating technologies with a project.
 **Files:**
 - `server/src/routes/project.routes.ts` (lines 57-107)
 
+**Verify:** `npm test -- projects` (in `server/`) — covers 401, 400 missing field, 201 with persisted junction rows.
+
 **2. Project Update Route**
 **What:** PUT `/api/projects/:id` -- protected. Validates required fields and project ID. Updates project data and replaces tech stack using `techStack.deleteMany` + `techStack.create`. Returns updated project with nested includes.
 **Files:**
 - `server/src/routes/project.routes.ts` (lines 109-169)
+
+**Verify:** `npm test -- projects` (in `server/`) — covers 401, 400, and the tech stack replacement (old links gone, new ones present).
 
 **3. Project Delete Route**
 **What:** DELETE `/api/projects/:id` -- protected. Deletes project by ID, cascade removes all related records. Returns deleted project.
 **Files:**
 - `server/src/routes/project.routes.ts` (lines 171-183)
 
+**Verify:** `npm test -- projects` (in `server/`) — covers 401 and full cascade (project, junction rows, manuals, steps all gone).
+
 **4. Request Type Definitions**
 **What:** `RequestCreateProject` and `RequestUpdateProject` interfaces with typed body including `technologyIds: string[]`.
 **Files:**
 - `server/src/types/requests.ts` (lines 12-36)
+
+**Verify:** No tests — type-only, intentionally not covered.
 
 ### Client
 
@@ -164,26 +180,75 @@ A two-column picker for associating technologies with a project.
 **Files:**
 - `client/src/services/project.service.js` (lines 29-42)
 
+**Verify:** No tests cover this task yet.
+
 **6. HomePage Admin Handlers**
 **What:** `handleAddProject` (opens form with no project), `handleEditProject` (opens form with project), `handleCloseForm` (closes modal, clears editing state), `handleSubmitProject` (calls create or update based on projectId, refreshes list), `handleDeleteProject` (confirm dialog, deletes, refreshes list).
 **Files:**
 - `client/src/pages/HomePage/HomePage.jsx` (lines 56-114)
+
+**Verify:** No tests cover this task yet.
 
 **7. ProjectForm Modal**
 **What:** Modal form for create/edit. Fetches technologies and categories on open. Populates from `project` prop when editing, resets when creating. Fields: name, description, image (Cloudinary), GitHub URLs, deploy URLs, technology selector. Submit calls `onSubmit(formData, project?.id)`.
 **Files:**
 - `client/src/components/ProjectForm/ProjectForm.jsx`
 
+**Verify:** No tests cover this task yet.
+
 **8. CloudinaryUpload Component**
 **What:** Initializes Cloudinary Upload Widget once on mount with configured preset and constraints. Shows upload button and image preview. Returns `secure_url` via `onImageUpload` callback. Memoized with `React.memo`.
 **Files:**
 - `client/src/components/CloudinaryUpload/CloudinaryUpload.jsx`
+
+**Verify:** No tests cover this task yet (third-party widget; would need iframe driver or stub to test reliably).
 
 **9. TechnologySelector Component**
 **What:** Two-column grid splitting technologies into "Selected" and "Available" based on `selectedIds`. Click to move between columns. Shows counts, empty states, and a "+" button to open TechnologyForm. Calls `onChange(selectedIds)` on every change.
 **Files:**
 - `client/src/components/TechnologySelector/TechnologySelector.jsx`
 
+**Verify:** No tests cover this task yet.
+
+## Validation
+
+End-to-end verification after all tasks complete.
+
+### Automated checks
+
+- Server-side: `npm test -- projects` (in `server/`) — covers POST/PUT/DELETE auth gating, validation, tech stack replacement, cascade delete
+- Full server suite: `npm test` (in `server/`)
+- E2E: no spec written yet
+
+### Manual checks (UI)
+
+1. Logged out: no "+ Add New Project" button on `/`, no pencil/X overlays on cards
+2. Log in → "+ Add New Project" appears, pencil/X appear on each card
+3. Click "+ Add New Project" → empty modal opens; submit with empty Name → HTML5 prevents (or 400 surfaces if forced) → fill all required fields, upload image, select 1+ technologies → click "Create Project" → modal closes, list refreshes, new card appears
+4. Click pencil on a card → modal opens prefilled, including selected technologies in the left column → modify fields → click "Update Project" → modal closes, card reflects changes
+5. Verify tech stack replacement: edit a project, remove all selected technologies, save → reload → card shows no logos
+6. Click X on a card → confirm dialog `Are you sure you want to delete "{name}"?` → confirm → card disappears
+7. After delete: visit Prisma Studio (or query DB) → corresponding `ProjectTechStack`, `ProjectManual`, `ManualStep` rows are also gone
+8. Cancel from confirm or modal → no changes, list unchanged
+
+### Cross-feature dependencies
+
+- `auth-spec.md` — admin gating on every CUD endpoint and conditional UI
+- `project-list-spec.md` — Add/Edit/Delete buttons live on the cards there
+- `technology-management-spec.md` — `+` button inside TechnologySelector opens that flow
+- `manual-management-spec.md` and `manual-steps-spec.md` — affected by the cascade on delete
+- `hero-technologies-spec.md` — shares the same `Promise.all` refresh after mutations
+
 ## Current State
 
-Fully implemented on both client and server. No existing tests.
+Fully implemented on both client and server.
+
+**Tests in place:**
+- `server/tests/projects.test.ts` covers POST/PUT/DELETE: auth gating, missing-field validation, tech stack replacement on PUT, full cascade on DELETE
+
+**Untested:**
+- Client `projectService` CUD methods
+- ProjectForm modal flow (create/edit/cancel/validation surfacing)
+- CloudinaryUpload widget (third-party)
+- TechnologySelector interaction
+- No E2E spec for the CRUD flow yet

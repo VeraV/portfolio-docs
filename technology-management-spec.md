@@ -103,6 +103,14 @@ Relation: Technology belongs to one TechCategory.
 - **Logo preview:** Validates image URL by attempting to render it with `onLoad`/`onError` handlers
 - **Unique name:** Enforced at database level (Prisma unique constraint)
 
+### Must Not
+
+- Do not expose POST `/api/technology` without `isAuthenticated`
+- Do not add a standalone technology management page; creation lives only inside the ProjectForm flow
+- Do not allow update or delete of technologies in this iteration (see Out of Scope)
+- Do not omit the `category` include from the POST response — the client expects it for immediate display
+- Do not let GET `/api/tech-category` require auth; it must remain public so the form can load categories before login is asserted
+
 ### Out of Scope
 
 - No technology editing (update)
@@ -123,15 +131,21 @@ Relation: Technology belongs to one TechCategory.
 **Files:**
 - `server/src/routes/technology.routes.ts` (lines 26-55)
 
+**Verify:** `npm test -- technology` (in `server/`) — covers 401, 400 missing field, 200 with nested `category` and DB persistence.
+
 **2. TechCategory GET Route**
 **What:** GET `/api/tech-category` -- public. Returns all tech categories from the database.
 **Files:**
 - `server/src/routes/tech-category.routes.ts`
 
+**Verify:** `npm test -- technology` (in `server/`) — covers 200 with seeded categories.
+
 **3. Request Type Definition**
 **What:** `RequestCreateTechnology` interface with typed body: `name`, `logo_url`, `official_site_url`, `categoryId`.
 **Files:**
 - `server/src/types/requests.ts` (lines 38-45)
+
+**Verify:** No tests — type-only, intentionally not covered.
 
 ### Client
 
@@ -140,21 +154,65 @@ Relation: Technology belongs to one TechCategory.
 **Files:**
 - `client/src/services/technology.service.js` (lines 24-27)
 
+**Verify:** No tests cover this task yet.
+
 **5. TechCategory Service**
 **What:** Singleton class with axios instance (no JWT interceptor needed). `getAll()` -> GET `/api/tech-category`.
 **Files:**
 - `client/src/services/tech-category.service.js`
+
+**Verify:** No tests cover this task yet.
 
 **6. ProjectForm Integration**
 **What:** Fetches tech categories on open. Manages `isTechFormOpen` state. `handleSubmitTechnology` calls `technologyService.create()`, on success closes TechnologyForm and re-fetches technology list. Passes `categories` prop to TechnologyForm.
 **Files:**
 - `client/src/components/ProjectForm/ProjectForm.jsx` (lines 16, 43-52, 110-138)
 
+**Verify:** No tests cover this task yet.
+
 **7. TechnologyForm Component**
 **What:** Nested modal form for creating a technology. Fields: name, logo URL (with preview and error handling), official website, category dropdown. Resets on open. On submit calls `onSubmit(formData)`.
 **Files:**
 - `client/src/components/TechnologyForm/TechnologyForm.jsx`
 
+**Verify:** No tests cover this task yet.
+
+## Validation
+
+End-to-end verification after all tasks complete.
+
+### Automated checks
+
+- Server-side: `npm test -- technology` (in `server/`) — covers POST `/api/technology` (auth, validation, category include, DB persistence) and GET `/api/tech-category`
+- Full server suite: `npm test` (in `server/`)
+- E2E: no spec written yet
+
+### Manual checks (UI)
+
+1. Logged out: cannot reach this flow (no "Add New Project" button)
+2. Log in → click "+ Add New Project" → click "+" inside the TechnologySelector → TechnologyForm modal opens above ProjectForm
+3. Leave name blank → server returns 400 → alert shows "Failed to create technology: ..."
+4. Enter a non-image URL in Logo URL → preview box shows red error
+5. Enter a valid image URL → preview shows the image
+6. Submit duplicate name → 500 from Prisma → alert surfaces the error
+7. Fill all fields with a unique name → click "Create Technology" → modal closes; new logo appears in "Available" column without closing ProjectForm
+8. Cancel: click "×" or "Cancel" → modal closes, no DB write
+9. After creation, visit `/` → new technology appears in the hero section's logo row (sort_order null → at the end)
+
+### Cross-feature dependencies
+
+- `project-crud-spec.md` — only entry point to this flow (TechnologySelector lives there)
+- `auth-spec.md` — POST gated by JWT; UI gated by `isLoggedIn`
+- `hero-technologies-spec.md` — newly created technologies show up in the public hero list
+- Seeded `TechCategory` rows in `server/prisma/seed.ts` — required for the dropdown to have options
+
 ## Current State
 
-Fully implemented on both client and server. No existing tests.
+Fully implemented on both client and server.
+
+**Tests in place:**
+- `server/tests/technology.test.ts` — 6 integration tests across POST `/api/technology` (auth, validation, category include) and GET `/api/tech-category` (seeded list)
+
+**Untested:**
+- Client `technologyService.create`, `techCategoryService.getAll`, the TechnologyForm modal (logo preview, validation, submit/cancel), and the ProjectForm integration handler
+- No E2E spec yet

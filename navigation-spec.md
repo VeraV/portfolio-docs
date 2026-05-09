@@ -62,6 +62,14 @@ Rendered by a catch-all `path="*"` route. Any URL that doesn't match a defined r
 - **Auth-aware navbar:** Consumes `AuthContext` to toggle between login icon and welcome/logout UI
 - **Loading spinner:** Used by `IsPrivate` and `IsAnon` guards during auth loading state
 
+### Must Not
+
+- Do not render the Navbar inside `<Routes>` — it must persist across route changes
+- Do not use `<a href>` for in-app navigation; only `<Link>` (full page reloads break the SPA experience)
+- Do not add a 404-redirect for unknown URLs — the catch-all renders `NotFoundPage` in place
+- Do not introduce additional navbar entries without updating this spec (single source of truth)
+- Do not couple `IsPrivate` / `IsAnon` to the loading spinner via direct DOM access; they consume it as a component
+
 ### Out of Scope
 
 - No breadcrumbs or secondary navigation
@@ -79,10 +87,14 @@ Rendered by a catch-all `path="*"` route. Any URL that doesn't match a defined r
 **Files:**
 - `client/src/App.jsx`
 
+**Verify:** No dedicated test; indirectly covered by `npm test -- auth` (in `tests/`) — the login route only loads if the router and `<IsAnon>` wrapper are wired correctly.
+
 **2. Navbar**
 **What:** Persistent navigation bar. Left side: Home and About links using `<Link>`. Right side: auth-aware UI consuming `AuthContext` -- key icon when logged out, welcome message and logout button when logged in. Uses Heroicons (`KeyIcon`, `ArrowRightStartOnRectangleIcon`).
 **Files:**
 - `client/src/components/Navbar/Navbar.jsx`
+
+**Verify:** Partially covered by `npm test -- auth` (in `tests/`) — the auth E2E asserts welcome message + logout button after login and key icon after logout. Home/About link clicks are not asserted.
 
 **3. Loading Spinner**
 **What:** Full-viewport centered spinner with three bouncing circles. Used as loading state in route guard components.
@@ -90,12 +102,49 @@ Rendered by a catch-all `path="*"` route. Any URL that doesn't match a defined r
 - `client/src/components/Loading/Loading.jsx`
 - `client/src/components/Loading/Loading.css`
 
+**Verify:** No tests cover this task yet.
+
 **4. NotFoundPage**
 **What:** Simple page component with "Page Not Found" heading and "This page doesn't seem to exist" paragraph. Rendered by the catch-all `path="*"` route.
 **Files:**
 - `client/src/pages/NotFoundPage/NotFoundPage.jsx`
 - `client/src/pages/NotFoundPage/NotFoundPage.css`
 
+**Verify:** No tests cover this task yet.
+
+## Validation
+
+End-to-end verification after all tasks complete.
+
+### Automated checks
+
+- E2E: `npm test -- auth` (in `tests/`) — partially exercises Navbar's auth-aware right-hand side
+- No dedicated navigation E2E spec yet (no test for clicking Home/About, no test for the 404 page)
+
+### Manual checks (UI)
+
+1. Visit `/` → Navbar visible with "Home", "About", and key icon (when logged out)
+2. Click "About" → navigates to `/about` without a full page reload (no spinner from the browser)
+3. Click "Home" → returns to `/`
+4. Visit a non-existent URL like `/whatever` → NotFoundPage renders ("Page Not Found"), Navbar still visible
+5. Log in → Navbar right side switches to "Welcome, Admin" + logout icon
+6. Log out → Navbar right side reverts to key icon
+7. Visit `/login` while logged in → IsAnon redirects to `/` (covered in auth-spec)
+
+### Cross-feature dependencies
+
+- `auth-spec.md` — Navbar's right side is auth-aware; `<IsAnon>` and `<IsPrivate>` route guards are defined there
+- Every other spec depends on this one — `/about`, `/`, `/projects/:id`, `/login` routes registered here
+- `Loading` component is consumed by `IsPrivate` and `IsAnon` (auth-spec) during auth state resolution
+
 ## Current State
 
-Fully implemented on the client. No existing tests.
+Fully implemented on the client.
+
+**Tests in place:**
+- Implicit Navbar coverage from `tests/specs/auth.spec.ts` (welcome message, logout button, key icon assertions)
+
+**Untested:**
+- Home/About link click navigation
+- NotFoundPage rendering on unknown URLs
+- Loading spinner visual / mount behavior

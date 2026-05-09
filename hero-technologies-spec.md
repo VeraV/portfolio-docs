@@ -95,6 +95,13 @@ Relation: Technology belongs to one TechCategory. The GET endpoint includes the 
 - **Internal link:** "Learn More About Me" uses React Router `<Link to="/about">`
 - **Sort order:** Technologies displayed in `sort_order` ascending order (determined by API)
 
+### Must Not
+
+- Do not fetch technologies inside `HeroSection`; the parent `HomePage` owns the request so the same payload feeds both sections
+- Do not add filtering, grouping, or category headers to the hero list (flat row by design — see Out of Scope)
+- Do not gate the GET `/api/technology` endpoint behind auth; it must remain public
+- Do not omit the `category` include from the response — the project form depends on it
+
 ### Out of Scope
 
 - No filtering or grouping technologies by category in the hero section (flat list)
@@ -111,10 +118,14 @@ Relation: Technology belongs to one TechCategory. The GET endpoint includes the 
 **Files:**
 - `server/prisma/schema.prisma` (Technology model, lines 16-24; TechCategory model, lines 10-14)
 
+**Verify:** No dedicated test; indirectly covered by `npm test -- technology` (in `server/`) — schema mismatches would break the GET test.
+
 **2. Technology GET Route**
 **What:** GET `/api/technology` -- public endpoint returning all technologies with their category relation, sorted by sort_order ascending.
 **Files:**
 - `server/src/routes/technology.routes.ts` (lines 9-23)
+
+**Verify:** `npm test -- technology` (in `server/`) — covers sort order asc, NULL-last behavior, nested `category` relation.
 
 ### Client
 
@@ -123,16 +134,56 @@ Relation: Technology belongs to one TechCategory. The GET endpoint includes the 
 **Files:**
 - `client/src/services/technology.service.js`
 
+**Verify:** No tests cover this task yet.
+
 **4. HomePage Data Fetching**
 **What:** Fetches projects and technologies in parallel via `Promise.all` on mount. Manages `isLoading` and `error` states. Passes `technologies` array as prop to `HeroSection`.
 **Files:**
 - `client/src/pages/HomePage/HomePage.jsx` (lines 20-37, 43-53)
+
+**Verify:** No tests cover this task yet.
 
 **5. HeroSection Component**
 **What:** Receives `technologies` prop. Renders name, title, bio, LinkedIn/GitHub links, technology logo grid (each linking to official site), and "Learn More About Me" link to `/about`.
 **Files:**
 - `client/src/components/HeroSection/HeroSection.jsx`
 
+**Verify:** No tests cover this task yet.
+
+## Validation
+
+End-to-end verification after all tasks complete.
+
+### Automated checks
+
+- Server-side: `npm test -- technology` (in `server/`) — covers the GET endpoint shape, ordering, and category include
+- Full server suite: `npm test` (in `server/`)
+- E2E: no spec written for the home page yet
+
+### Manual checks (UI)
+
+1. Visit `/` → hero section renders with name, title, bio, LinkedIn + GitHub buttons
+2. LinkedIn and GitHub links open in new tabs and point to the correct URLs
+3. "Technologies I Work With" heading appears, followed by logo row in `sort_order` ascending
+4. Hover a logo → scale-up effect; click → opens the technology's official site in a new tab
+5. Each logo has `alt` and `title` matching the technology name (hover to confirm)
+6. Click "Learn More About Me" → client-side navigation to `/about`
+7. Disable network or stop the API → loading spinner appears, then the error message after the request fails
+
+### Cross-feature dependencies
+
+- `technology-management-spec.md` — POST `/api/technology` adds new entries that show up here on next load
+- Seeded technologies in `server/prisma/seed.ts` — without the seed, the hero list is empty in dev/test
+- `project-list-spec.md` — both fetched together via `Promise.all` in `HomePage`; a failure in either surfaces the same error state
+- `navigation-spec.md` — the `/about` link relies on the route registration
+
 ## Current State
 
-Fully implemented on both client and server. No existing tests.
+Fully implemented on both client and server.
+
+**Tests in place:**
+- `server/tests/technology.test.ts` covers the GET `/api/technology` endpoint (sort order asc, nested `category`, null sort_order ordering)
+
+**Untested:**
+- Client-side `HomePage` data fetching, `HeroSection` rendering, hover/click behavior, error/loading branches
+- No E2E spec for the home page yet

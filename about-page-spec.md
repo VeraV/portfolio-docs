@@ -46,6 +46,13 @@ A static, public page at `/about` with no API calls or dynamic data. All content
 - **External link:** "Email Me" uses a standard `<a href="mailto:...">` tag
 - **Image:** Profile photo served from Cloudinary CDN (hardcoded URL)
 
+### Must Not
+
+- Do not introduce any API calls, state, or context consumption from this page (it must stay purely presentational)
+- Do not add admin editing UI for the page content (all copy is hardcoded by design)
+- Do not migrate content to a CMS or markdown file in this iteration; if needed later it becomes its own spec
+- Do not add a contact form here (covered by the `mailto:` button only)
+
 ### Out of Scope
 
 - No admin editing of about page content (all hardcoded)
@@ -62,6 +69,36 @@ A static, public page at `/about` with no API calls or dynamic data. All content
 **Files:**
 - `client/src/pages/ProfilePage/ProfilePage.jsx`
 
+**Verify:** No tests cover this task yet.
+
+## Validation
+
+End-to-end verification after all tasks complete.
+
+### Automated checks
+
+- No automated tests cover this spec yet (no server endpoints, no E2E spec written)
+
+### Manual checks (UI)
+
+1. Visit `/about` → page renders with white card on gray background
+2. Profile photo loads (Cloudinary URL); broken image would be visible
+3. All seven content sections appear in order: title, photo, intro, journey, skills, what-drives-me, CTA
+4. Click "View My Work" → client-side navigation to `/` (no full page reload)
+5. Click "Email Me" → mail client opens with `veremei.vera@gmail.com` prefilled
+6. Page works for both logged-in and logged-out users (no auth-aware rendering)
+
+### Cross-feature dependencies
+
+- `navigation-spec.md` — the `/about` route must be registered for this page to be reachable
+- `auth-spec.md` — Navbar (which is shared layout) is auth-aware; this page does not consume auth itself but renders alongside it
+
 ## Current State
 
-Fully implemented. No existing tests.
+Fully implemented.
+
+**Tests in place:**
+- None yet
+
+**Untested:**
+- The entire ProfilePage component (no tests written; static content limits test ROI)

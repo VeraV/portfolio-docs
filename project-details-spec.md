@@ -130,6 +130,14 @@ Visible when there are steps to show OR when the admin is logged in. Shows the a
 - **Step ordering:** Steps sorted by `step_number` ascending (determined by API)
 - **External links:** All project links use `<a>` with `target="_blank"` and `rel="noopener noreferrer"`
 
+### Must Not
+
+- Do not include inactive manuals or their steps in the public response — only `isActive: true` manuals
+- Do not render Server GitHub / Server Deploy buttons when their URL is null
+- Do not require auth on GET `/api/projects/:id`; this is a public page
+- Do not fetch manuals on the client when logged out — saves a round-trip and avoids exposing admin-only shape
+- Do not modify the project's `manuals` field via this endpoint; it's read-only here
+
 ### Out of Scope
 
 - No project editing from this page (edit is on the home page card)
@@ -147,6 +155,8 @@ Visible when there are steps to show OR when the admin is logged in. Shows the a
 **Files:**
 - `server/src/routes/project.routes.ts` (lines 28-55)
 
+**Verify:** `npm test -- projects` (in `server/`) — covers 200 with techStack + active manual + ordered steps, exclusion of inactive manuals, and 404 for unknown id.
+
 ### Client
 
 **2. Project Service (getOne method)**
@@ -154,11 +164,51 @@ Visible when there are steps to show OR when the admin is logged in. Shows the a
 **Files:**
 - `client/src/services/project.service.js` (lines 24-26)
 
+**Verify:** No tests cover this task yet.
+
 **3. ProjectPage Component (public sections)**
 **What:** Fetches project data on mount. Renders three-section layout: project details card (image, info, links), admin manual management (conditional), and manual steps timeline. Handles loading, error, and not-found states.
 **Files:**
 - `client/src/pages/ProjectPage/ProjectPage.jsx`
 
+**Verify:** No tests cover this task yet.
+
+## Validation
+
+End-to-end verification after all tasks complete.
+
+### Automated checks
+
+- Server-side: `npm test -- projects` (in `server/`) — covers the GET `/api/projects/:id` contract including the `isActive` filter and step ordering
+- Full server suite: `npm test` (in `server/`)
+- E2E: no spec written yet
+
+### Manual checks (UI)
+
+1. From `/` click a project card → navigates to `/projects/:id`
+2. Top section: image, name, short description, tech stack logos render
+3. "View Live Site" and "Client GitHub" buttons always visible
+4. For a project with `server_github_url`/`server_deploy_url` set → corresponding buttons appear; for one without → they don't
+5. All external links open in new tabs (verify `target="_blank"` and `rel="noopener noreferrer"`)
+6. With an active manual + steps → bottom section shows `"{title} - Steps"` and the timeline (step numbers ascending)
+7. Without any active manual → bottom section hidden for public, visible (with title "Manual Steps") only when logged in
+8. Visit `/projects/<unknown-id>` → "Project not found" message
+9. Disable network → spinner, then error: "Failed to load project. Please try again later."
+
+### Cross-feature dependencies
+
+- `project-list-spec.md` — entry point (cards link here)
+- `manual-management-spec.md` — middle section is rendered when logged in; setting active there flips what's shown in the bottom section
+- `manual-steps-spec.md` — bottom timeline rendered via `StepItem` components defined there
+- `auth-spec.md` — auth-aware fetching of manuals and admin-only middle section
+
 ## Current State
 
-Fully implemented on both client and server. No existing tests.
+Fully implemented on both client and server.
+
+**Tests in place:**
+- `server/tests/projects.test.ts` covers GET `/api/projects/:id` (200 with includes, exclusion of inactive manuals, step ordering, 404)
+
+**Untested:**
+- Client `ProjectPage` rendering, conditional Server GitHub/Deploy buttons, loading/error/not-found branches
+- No E2E spec for the project detail page yet

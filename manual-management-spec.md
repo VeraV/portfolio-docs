@@ -134,6 +134,14 @@ Relation: Belongs to Project (cascade delete). Has many ManualStep (cascade dele
 - **Version sorting:** Manual list sorted by `version` descending (from API)
 - **Refresh on mutation:** All mutations trigger `fetchProjectData()` to refresh both project and manuals
 
+### Must Not
+
+- Do not allow more than one manual per project to be `isActive: true` at once; the set-active route's `$transaction` is the only sanctioned way to flip it
+- Do not let the PATCH `/api/manuals/:id` route mutate `isActive` or `projectId` — only `title`, `description`, `version`
+- Do not expose POST/PATCH/DELETE without `isAuthenticated`; the public GET is fine, mutations are not
+- Do not return the `projectId` in the GET list response — the route uses `select` to omit it
+- Do not skip the cascade on manual delete; orphaned steps are not allowed
+
 ### Out of Scope
 
 - No manual duplication/cloning
@@ -152,30 +160,42 @@ Relation: Belongs to Project (cascade delete). Has many ManualStep (cascade dele
 **Files:**
 - `server/src/routes/manual.routes.ts` (lines 11-28)
 
+**Verify:** `npm test -- manuals` (in `server/`) — covers sort order, the `select` field shape, and empty-array case.
+
 **2. Manual Create Route**
 **What:** POST `/api/manuals` -- protected. Validates required fields (`projectId`, `title`, `description`, `version`). Creates manual with `isActive: false`, returns with steps included.
 **Files:**
 - `server/src/routes/manual.routes.ts` (lines 118-140)
+
+**Verify:** `npm test -- manuals` (in `server/`) — covers 401, 400 missing field, 201 with `isActive: false` and empty `steps`.
 
 **3. Manual Update Route**
 **What:** PATCH `/api/manuals/:id` -- protected. Validates ID and required fields. Updates only `title`, `description`, `version`.
 **Files:**
 - `server/src/routes/manual.routes.ts` (lines 31-57)
 
+**Verify:** `npm test -- manuals` (in `server/`) — covers 401, 400, and that `isActive` is preserved across the update.
+
 **4. Manual Set Active Route**
 **What:** PATCH `/api/manuals/:projectId/:id/set-active` -- protected. Uses `$transaction` to set all project manuals to inactive, then set the target to active. Returns activated manual with steps.
 **Files:**
 - `server/src/routes/manual.routes.ts` (lines 61-99)
+
+**Verify:** `npm test -- manuals` (in `server/`) — covers 401 and the key transaction behavior (previously-active manual flips to inactive).
 
 **5. Manual Delete Route**
 **What:** DELETE `/api/manuals/:id` -- protected. Deletes manual by ID, cascade removes all ManualStep records.
 **Files:**
 - `server/src/routes/manual.routes.ts` (lines 103-115)
 
+**Verify:** `npm test -- manuals` (in `server/`) — covers 401 and step cascade.
+
 **6. Request Type Definitions**
 **What:** `RequestCreateManual` (body: `projectId`, `title`, `description`, `version`) and `RequestUpdateManual` (body: `title`, `description`, `version`).
 **Files:**
 - `server/src/types/requests.ts` (lines 47-62)
+
+**Verify:** No tests — type-only, intentionally not covered.
 
 ### Client
 
@@ -184,11 +204,48 @@ Relation: Belongs to Project (cascade delete). Has many ManualStep (cascade dele
 **Files:**
 - `client/src/services/manual.service.js`
 
+**Verify:** No tests cover this task yet.
+
 **8. ProjectPage Manual Section**
 **What:** Middle section of ProjectPage, only rendered when `isLoggedIn`. Manages state for editing (`editingManualId`, `editFormData`), creating (`showCreateForm`, `createFormData`). Renders manual cards in responsive grid with read/edit modes, radio buttons for active state, and inline create form.
 **Files:**
 - `client/src/pages/ProjectPage/ProjectPage.jsx` (lines 26-33, 70-141, 287-484)
 
+**Verify:** No tests cover this task yet.
+
+## Validation
+
+End-to-end verification after all tasks complete.
+
+### Automated checks
+
+- Server-side: `npm test -- manuals` (in `server/`) — covers all 5 endpoints, including the set-active transaction and delete cascade
+- Full server suite: `npm test` (in `server/`)
+- E2E: no spec written yet
+
+### Manual checks (UI)
+
+1. Log in as admin → visit `/projects/:id` → "User Manuals" section appears below the project details card
+2. Click "+ Create New Manual" → inline form appears → fill title/description/version → click Create → new card appears in the grid
+3. Click pencil on a card → fields become editable → modify → Save → card returns to read mode with new values
+4. Click X on a card → browser confirm "Are you sure you want to delete this manual?" → confirm → card disappears
+5. Click the radio button on an inactive manual → previously-active manual's radio unchecks → bottom "Manual Steps" section now reflects the newly-active manual
+6. Log out → reload `/projects/:id` → "User Manuals" section is hidden (publics never see it)
+7. Verify cascading: create a manual, add a step (via manual-steps), delete the manual → step is gone
+
+### Cross-feature dependencies
+
+- `auth-spec.md` — middle section is gated by `isLoggedIn`; mutations require a valid JWT
+- `manual-steps-spec.md` — steps cascade on manual delete; active manual's steps render publicly via `project-details-spec`
+- `project-details-spec.md` — public bottom section shows the active manual's steps; toggling active here flips that view
+- Seeded `ProjectManual` rows in `server/prisma/seed.ts` — depended on by `manuals.test.ts` and the projects detail tests
+
 ## Current State
 
-Fully implemented on both client and server. No existing tests.
+Fully implemented on both client and server.
+
+**Tests in place:**
+- `server/tests/manuals.test.ts` — 12 integration tests across all 5 endpoints (auth gating, validation, sort order, select-field shape, set-active transaction, delete cascade, isActive preservation on update)
+
+**Untested:**
+- Client `manualService` and the ProjectPage manual UI (no component or E2E tests yet)

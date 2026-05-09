@@ -124,6 +124,14 @@ Handled in `HomePage` (shared with hero section):
 - **Sort order:** Projects displayed in `sort_order` descending (determined by API)
 - **Nested include:** API returns `techStack` with nested `technology` object for each relation
 
+### Must Not
+
+- Do not fetch projects inside `ProjectsSection` or `ProjectCard`; the parent `HomePage` owns the request
+- Do not require auth on GET `/api/projects`; it must remain public
+- Do not render admin-only controls (Add/Edit/Delete) when `isLoggedIn` is false
+- Do not omit the nested `techStack.technology` include — the card relies on it for logo rendering
+- Do not add a default value for missing `sort_order`; nulls are preserved and the API leaves them at the end of desc ordering
+
 ### Out of Scope
 
 - No search or filtering of projects
@@ -141,10 +149,14 @@ Handled in `HomePage` (shared with hero section):
 **Files:**
 - `server/prisma/schema.prisma` (Project model, lines 28-39; ProjectTechStack model, lines 41-49)
 
+**Verify:** No dedicated test; indirectly covered by `npm test -- projects` (in `server/`) — schema mismatches would break list/detail/CRUD tests.
+
 **2. Project GET All Route**
 **What:** GET `/api/projects` -- public endpoint returning all projects with nested `techStack -> technology` includes, sorted by `sort_order` descending.
 **Files:**
 - `server/src/routes/project.routes.ts` (lines 9-26)
+
+**Verify:** `npm test -- projects` (in `server/`) — covers sort order desc and nested `techStack.technology` shape.
 
 ### Client
 
@@ -153,21 +165,64 @@ Handled in `HomePage` (shared with hero section):
 **Files:**
 - `client/src/services/project.service.js`
 
+**Verify:** No tests cover this task yet.
+
 **4. HomePage Data Fetching**
 **What:** Fetches projects and technologies in parallel via `Promise.all` on mount. Passes `projects` array and admin handler callbacks to `ProjectsSection`.
 **Files:**
 - `client/src/pages/HomePage/HomePage.jsx` (lines 20-37, 116-134)
+
+**Verify:** No tests cover this task yet.
 
 **5. ProjectsSection Component**
 **What:** Renders "My Projects" heading, subtitle, and conditionally the "Add New Project" button (admin only). Maps `projects` array to `ProjectCard` components in a vertical flex column.
 **Files:**
 - `client/src/components/ProjectsSection/ProjectsSection.jsx`
 
+**Verify:** No tests cover this task yet.
+
 **6. ProjectCard Component**
 **What:** Clickable card that navigates to `/projects/:id`. Renders project image (responsive mobile/desktop), name, tech stack logos, and short description. When logged in, shows edit (pencil) and delete (X) icon buttons with `stopPropagation`. Uses Heroicons (`PencilSquareIcon`, `XMarkIcon`).
 **Files:**
 - `client/src/components/ProjectCard/ProjectCard.jsx`
 
+**Verify:** No tests cover this task yet.
+
+## Validation
+
+End-to-end verification after all tasks complete.
+
+### Automated checks
+
+- Server-side: `npm test -- projects` (in `server/`) — covers GET `/api/projects` (sort order, nested includes)
+- Full server suite: `npm test` (in `server/`)
+- E2E: no spec written for the home page yet
+
+### Manual checks (UI)
+
+1. Visit `/` → projects render below the hero section, sorted by `sort_order` desc (highest first)
+2. Each card shows: name, tech stack logos, short description, image
+3. Logos have `title` and `alt` matching technology name (hover to verify)
+4. Click a card → navigates to `/projects/:id`
+5. Logged out: no "Add New Project" button, no per-card pencil/X overlays
+6. Logged in: "Add New Project" button visible above the list; pencil/X overlays appear on each card; clicking pencil/X does not trigger the card's navigate handler (`stopPropagation`)
+7. Disable network → spinner appears, then error: "Failed to load projects or technologies. Please try again later."
+
+### Cross-feature dependencies
+
+- `hero-technologies-spec.md` — both fetched together via `Promise.all` in `HomePage`
+- `project-details-spec.md` — destination of card clicks
+- `project-crud-spec.md` — Add/Edit/Delete callbacks come from there
+- `auth-spec.md` — `AuthContext` drives admin UI visibility
+- Seeded `Project` rows in `server/prisma/seed.ts` — needed for any test that reads or modifies projects
+
 ## Current State
 
-Fully implemented on both client and server. No existing tests.
+Fully implemented on both client and server.
+
+**Tests in place:**
+- `server/tests/projects.test.ts` covers GET `/api/projects` (sort order desc, nested techStack.technology shape)
+
+**Untested:**
+- Client `projectService`, `ProjectsSection`, `ProjectCard` rendering, click-to-navigate behavior, admin overlay visibility
+- No E2E spec for the home page yet
