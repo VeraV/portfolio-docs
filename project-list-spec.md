@@ -165,28 +165,28 @@ Handled in `HomePage` (shared with hero section):
 **Files:**
 - `client/src/services/project.service.js`
 
-**Verify:** No tests cover this task yet.
+**Verify:** No dedicated test; indirectly covered by `npm test -- project-list` (in `tests/`) — the home page only renders project cards if `getAll()` succeeded.
 
 **4. HomePage Data Fetching**
 **What:** Fetches projects and technologies in parallel via `Promise.all` on mount. Passes `projects` array and admin handler callbacks to `ProjectsSection`.
 **Files:**
 - `client/src/pages/HomePage/HomePage.jsx` (lines 20-37, 116-134)
 
-**Verify:** No tests cover this task yet.
+**Verify:** No dedicated test; indirectly covered by `npm test -- project-list` (in `tests/`) — sort order and card visibility only pass once `Promise.all` resolves and the projects array reaches `ProjectsSection`. Loading and error branches are not asserted.
 
 **5. ProjectsSection Component**
 **What:** Renders "My Projects" heading, subtitle, and conditionally the "Add New Project" button (admin only). Maps `projects` array to `ProjectCard` components in a vertical flex column.
 **Files:**
 - `client/src/components/ProjectsSection/ProjectsSection.jsx`
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- project-list` (in `tests/`) — covers the heading + subtitle, the full set of seeded cards rendered in `sort_order` desc, and the "Add New Project" button being absent when logged out.
 
 **6. ProjectCard Component**
 **What:** Clickable card that navigates to `/projects/:id`. Renders project image (responsive mobile/desktop), name, tech stack logos, and short description. When logged in, shows edit (pencil) and delete (X) icon buttons with `stopPropagation`. Uses Heroicons (`PencilSquareIcon`, `XMarkIcon`).
 **Files:**
 - `client/src/components/ProjectCard/ProjectCard.jsx`
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- project-list` (in `tests/`) — covers project name rendering, click → `/projects/:id` navigation, and absence of Edit/Delete icons when logged out. Tech logo rendering and the responsive image switch are not directly asserted (covered indirectly via card visibility).
 
 ## Validation
 
@@ -195,8 +195,8 @@ End-to-end verification after all tasks complete.
 ### Automated checks
 
 - Server-side: `npm test -- projects` (in `server/`) — covers GET `/api/projects` (sort order, nested includes)
-- Full server suite: `npm test` (in `server/`)
-- E2E: no spec written for the home page yet
+- E2E: `npm test -- project-list` (in `tests/`) — covers section header, all seeded cards rendered in `sort_order` desc, click-to-navigate, and admin UI hidden when logged out
+- Full server suite: `npm test` (in `server/`); full E2E suite: `npm test` (in `tests/`)
 
 ### Manual checks (UI)
 
@@ -222,7 +222,9 @@ Fully implemented on both client and server.
 
 **Tests in place:**
 - `server/tests/projects.test.ts` covers GET `/api/projects` (sort order desc, nested techStack.technology shape)
+- `tests/specs/project-list.spec.ts` — 5 E2E tests: section header + subtitle, all 5 seeded projects render, sort_order desc verified across the 4 numbered projects, click → `/projects/:id`, admin UI absent when logged out
 
 **Untested:**
-- Client `projectService`, `ProjectsSection`, `ProjectCard` rendering, click-to-navigate behavior, admin overlay visibility
-- No E2E spec for the home page yet
+- Loading and error branches of `HomePage` (race conditions; would need network throttling)
+- Tech logo rendering per card and the mobile/desktop responsive image switch (visual concerns; low value to assert)
+- Position of `Yoga Path` (sort_order=null) in the desc-ordered list (Postgres NULLS-FIRST default; not worth pinning)
