@@ -69,7 +69,7 @@ A static, public page at `/about` with no API calls or dynamic data. All content
 **Files:**
 - `client/src/pages/ProfilePage/ProfilePage.jsx`
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- about-page` (in `tests/`) — covers all main headings, profile photo presence, key skill categories, and both CTA buttons (View My Work navigation, Email Me mailto href).
 
 ## Validation
 
@@ -77,7 +77,8 @@ End-to-end verification after all tasks complete.
 
 ### Automated checks
 
-- No automated tests cover this spec yet (no server endpoints, no E2E spec written)
+- E2E: `npm test -- about-page` (in `tests/`) — covers heading rendering, profile photo, skills list spot-check, "View My Work" → `/`, and "Email Me" `mailto:` href
+- No server-side tests apply (page is purely static, no endpoints)
 
 ### Manual checks (UI)
 
@@ -98,7 +99,8 @@ End-to-end verification after all tasks complete.
 Fully implemented.
 
 **Tests in place:**
-- None yet
+- `tests/specs/about-page.spec.ts` — 5 E2E tests: title + main headings, profile photo (visible + non-empty `src`), key skills categories, "View My Work" navigation to `/`, "Email Me" `mailto:` href
 
 **Untested:**
-- The entire ProfilePage component (no tests written; static content limits test ROI)
+- Exact paragraph copy (intentionally not asserted — too brittle)
+- Layout/styling, responsive breakpoints (intentionally not covered by E2E)
