@@ -87,14 +87,14 @@ Rendered by a catch-all `path="*"` route. Any URL that doesn't match a defined r
 **Files:**
 - `client/src/App.jsx`
 
-**Verify:** No dedicated test; indirectly covered by `npm test -- auth` (in `tests/`) — the login route only loads if the router and `<IsAnon>` wrapper are wired correctly.
+**Verify:** No dedicated test; indirectly covered by `npm test -- navigation` and `npm test -- auth` (both in `tests/`) — navigation tests exercise the public route table (`/`, `/about`, `/login`, catch-all `*`), and the auth tests exercise the `<IsAnon>` wrapper on `/login`.
 
 **2. Navbar**
 **What:** Persistent navigation bar. Left side: Home and About links using `<Link>`. Right side: auth-aware UI consuming `AuthContext` -- key icon when logged out, welcome message and logout button when logged in. Uses Heroicons (`KeyIcon`, `ArrowRightStartOnRectangleIcon`).
 **Files:**
 - `client/src/components/Navbar/Navbar.jsx`
 
-**Verify:** Partially covered by `npm test -- auth` (in `tests/`) — the auth E2E asserts welcome message + logout button after login and key icon after logout. Home/About link clicks are not asserted.
+**Verify:** `npm test -- navigation` and `npm test -- auth` (both in `tests/`) — navigation tests cover the logged-out left side (Home/About link rendering + click navigation) and the key icon; auth tests cover the logged-in right side (welcome message + logout button).
 
 **3. Loading Spinner**
 **What:** Full-viewport centered spinner with three bouncing circles. Used as loading state in route guard components.
@@ -110,7 +110,7 @@ Rendered by a catch-all `path="*"` route. Any URL that doesn't match a defined r
 - `client/src/pages/NotFoundPage/NotFoundPage.jsx`
 - `client/src/pages/NotFoundPage/NotFoundPage.css`
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- navigation` (in `tests/`) — covers heading, paragraph, and that the navbar still renders on a 404.
 
 ## Validation
 
@@ -118,8 +118,8 @@ End-to-end verification after all tasks complete.
 
 ### Automated checks
 
-- E2E: `npm test -- auth` (in `tests/`) — partially exercises Navbar's auth-aware right-hand side
-- No dedicated navigation E2E spec yet (no test for clicking Home/About, no test for the 404 page)
+- E2E: `npm test -- navigation` (in `tests/`) — covers logged-out navbar contents, Home/About click navigation, key icon → `/login`, and the catch-all 404 page (heading + persistent navbar)
+- E2E: `npm test -- auth` (in `tests/`) — covers the auth-aware right side of the navbar (welcome message after login, key icon after logout) and the `<IsAnon>` redirect
 
 ### Manual checks (UI)
 
@@ -142,9 +142,8 @@ End-to-end verification after all tasks complete.
 Fully implemented on the client.
 
 **Tests in place:**
-- Implicit Navbar coverage from `tests/specs/auth.spec.ts` (welcome message, logout button, key icon assertions)
+- `tests/specs/navigation.spec.ts` — 6 E2E tests: navbar persistence on `/` and `/about`, Home → `/`, About → `/about`, key icon → `/login`, NotFoundPage rendering with persistent navbar
+- `tests/specs/auth.spec.ts` — implicit Navbar right-side coverage (welcome message, logout button, key icon after logout)
 
 **Untested:**
-- Home/About link click navigation
-- NotFoundPage rendering on unknown URLs
-- Loading spinner visual / mount behavior
+- Loading spinner visual / mount behavior (only used during auth state resolution)
