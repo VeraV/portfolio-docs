@@ -134,21 +134,21 @@ Relation: Technology belongs to one TechCategory. The GET endpoint includes the 
 **Files:**
 - `client/src/services/technology.service.js`
 
-**Verify:** No tests cover this task yet.
+**Verify:** No dedicated test; indirectly covered by `npm test -- hero-technologies` (in `tests/`) — the hero page only renders technology logos if `getAll()` succeeded.
 
 **4. HomePage Data Fetching**
 **What:** Fetches projects and technologies in parallel via `Promise.all` on mount. Manages `isLoading` and `error` states. Passes `technologies` array as prop to `HeroSection`.
 **Files:**
 - `client/src/pages/HomePage/HomePage.jsx` (lines 20-37, 43-53)
 
-**Verify:** No tests cover this task yet.
+**Verify:** No dedicated test; indirectly covered by `npm test -- hero-technologies` (in `tests/`) — the technology logos and sort_order assertions only pass once `Promise.all` resolves and the prop reaches `HeroSection`. Loading and error branches are not asserted.
 
 **5. HeroSection Component**
 **What:** Receives `technologies` prop. Renders name, title, bio, LinkedIn/GitHub links, technology logo grid (each linking to official site), and "Learn More About Me" link to `/about`.
 **Files:**
 - `client/src/components/HeroSection/HeroSection.jsx`
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- hero-technologies` (in `tests/`) — covers name/title/bio rendering, LinkedIn + GitHub external links, technologies heading + seeded logos, per-logo `href` + `target=_blank`, sort_order ascending, and "Learn More About Me" navigation.
 
 ## Validation
 
@@ -157,8 +157,8 @@ End-to-end verification after all tasks complete.
 ### Automated checks
 
 - Server-side: `npm test -- technology` (in `server/`) — covers the GET endpoint shape, ordering, and category include
-- Full server suite: `npm test` (in `server/`)
-- E2E: no spec written for the home page yet
+- E2E: `npm test -- hero-technologies` (in `tests/`) — covers hero static content, social links, technologies render in sort_order ascending, per-logo external link
+- Full server suite: `npm test` (in `server/`); full E2E suite: `npm test` (in `tests/`)
 
 ### Manual checks (UI)
 
@@ -183,7 +183,8 @@ Fully implemented on both client and server.
 
 **Tests in place:**
 - `server/tests/technology.test.ts` covers the GET `/api/technology` endpoint (sort order asc, nested `category`, null sort_order ordering)
+- `tests/specs/hero-technologies.spec.ts` — 6 E2E tests: hero name/title/bio, LinkedIn + GitHub external links, technologies heading + seeded logos visible, React link points to its official site with `target=_blank`, sort_order ascending (HTML, React, CSS first), "Learn More About Me" navigates to `/about`
 
 **Untested:**
-- Client-side `HomePage` data fetching, `HeroSection` rendering, hover/click behavior, error/loading branches
-- No E2E spec for the home page yet
+- Loading and error branches of `HomePage` (race conditions; would need network throttling or API kill)
+- Hover scale animation on technology logos (visual, low value to assert)
