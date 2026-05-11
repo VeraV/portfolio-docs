@@ -180,35 +180,35 @@ A two-column picker for associating technologies with a project.
 **Files:**
 - `client/src/services/project.service.js` (lines 29-42)
 
-**Verify:** No tests cover this task yet.
+**Verify:** No dedicated test; indirectly covered by `npm test -- project-crud` (in `tests/`) — the create/edit/delete flows only succeed if the corresponding service methods reach the API and apply the JWT.
 
 **6. HomePage Admin Handlers**
 **What:** `handleAddProject` (opens form with no project), `handleEditProject` (opens form with project), `handleCloseForm` (closes modal, clears editing state), `handleSubmitProject` (calls create or update based on projectId, refreshes list), `handleDeleteProject` (confirm dialog, deletes, refreshes list).
 **Files:**
 - `client/src/pages/HomePage/HomePage.jsx` (lines 56-114)
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- project-crud` (in `tests/`) — covers all five handler paths: add (modal open empty), edit (modal open prefilled), submit (create + update both refresh list), delete (confirm accept removes), and dismiss (confirm cancel preserves).
 
 **7. ProjectForm Modal**
 **What:** Modal form for create/edit. Fetches technologies and categories on open. Populates from `project` prop when editing, resets when creating. Fields: name, description, image (Cloudinary), GitHub URLs, deploy URLs, technology selector. Submit calls `onSubmit(formData, project?.id)`.
 **Files:**
 - `client/src/components/ProjectForm/ProjectForm.jsx`
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- project-crud` (in `tests/`) — covers modal headers ("Add New Project" / "Edit Project"), field filling, prefill-on-edit (Project Name input has the original value), and submission. Cloudinary upload is exercised via a stub (see CloudinaryUpload below).
 
 **8. CloudinaryUpload Component**
 **What:** Initializes Cloudinary Upload Widget once on mount with configured preset and constraints. Shows upload button and image preview. Returns `secure_url` via `onImageUpload` callback. Memoized with `React.memo`.
 **Files:**
 - `client/src/components/CloudinaryUpload/CloudinaryUpload.jsx`
 
-**Verify:** No tests cover this task yet (third-party widget; would need iframe driver or stub to test reliably).
+**Verify:** Indirectly covered by `npm test -- project-crud` (in `tests/`) — the E2E test blocks the real Cloudinary widget script via `page.route(...).abort()` and replaces `window.cloudinary` with an `addInitScript` stub that fires an immediate success with a fake `secure_url`. The component's contract (call `createUploadWidget`, fire `onImageUpload` on success) is exercised; the real widget's UI/upload path is not.
 
 **9. TechnologySelector Component**
 **What:** Two-column grid splitting technologies into "Selected" and "Available" based on `selectedIds`. Click to move between columns. Shows counts, empty states, and a "+" button to open TechnologyForm. Calls `onChange(selectedIds)` on every change.
 **Files:**
 - `client/src/components/TechnologySelector/TechnologySelector.jsx`
 
-**Verify:** No tests cover this task yet.
+**Verify:** Partially covered by `npm test -- project-crud` (in `tests/`) — the create flow clicks "Add React" in the Available column and submits, proving the add-to-selected path. Remove-from-selected, counts, empty states, and the "+" button (covered in `technology-management-spec`) are not asserted.
 
 ## Validation
 
@@ -217,8 +217,8 @@ End-to-end verification after all tasks complete.
 ### Automated checks
 
 - Server-side: `npm test -- projects` (in `server/`) — covers POST/PUT/DELETE auth gating, validation, tech stack replacement, cascade delete
-- Full server suite: `npm test` (in `server/`)
-- E2E: no spec written yet
+- E2E: `npm test -- project-crud` (in `tests/`) — covers admin UI visibility, full create flow (with Cloudinary stub), edit (rename), delete (accept confirm), and cancel delete (dismiss confirm)
+- Full server suite: `npm test` (in `server/`); full E2E suite: `npm test` (in `tests/`)
 
 ### Manual checks (UI)
 
@@ -245,10 +245,9 @@ Fully implemented on both client and server.
 
 **Tests in place:**
 - `server/tests/projects.test.ts` covers POST/PUT/DELETE: auth gating, missing-field validation, tech stack replacement on PUT, full cascade on DELETE
+- `tests/specs/project-crud.spec.ts` — 5 E2E tests: admin sees "+ Add New Project" + per-card Edit/Delete icons; create flow end-to-end (with Cloudinary stub); edit flow renames an existing project; delete with confirm accept removes the card; delete with confirm dismiss keeps the card
 
 **Untested:**
-- Client `projectService` CUD methods
-- ProjectForm modal flow (create/edit/cancel/validation surfacing)
-- CloudinaryUpload widget (third-party)
-- TechnologySelector interaction
-- No E2E spec for the CRUD flow yet
+- Form validation surfacing in the UI (HTML5 `required` and `type="url"`) — these are browser-native behaviors with little value in asserting
+- TechnologySelector remove-from-selected, counts text, empty states (left for a focused component-level pass if needed)
+- The real Cloudinary widget's UI/upload flow (intentionally stubbed in E2E; the widget is a third-party iframe)
