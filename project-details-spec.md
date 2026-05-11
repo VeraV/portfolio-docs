@@ -164,14 +164,14 @@ Visible when there are steps to show OR when the admin is logged in. Shows the a
 **Files:**
 - `client/src/services/project.service.js` (lines 24-26)
 
-**Verify:** No tests cover this task yet.
+**Verify:** No dedicated test; indirectly covered by `npm test -- project-details` (in `tests/`) — the page only renders project details if `getOne()` succeeded.
 
 **3. ProjectPage Component (public sections)**
-**What:** Fetches project data on mount. Renders three-section layout: project details card (image, info, links), admin manual management (conditional), and manual steps timeline. Handles loading, error, and not-found states.
+**What:** Fetches project data on mount. Renders three-section layout: project details card (image, info, links), admin manual management (conditional), and manual steps timeline. Handles loading, error, and not-found states. 404 from the API leaves `project` as `null` so the "Project not found" branch renders (distinct from generic errors).
 **Files:**
 - `client/src/pages/ProjectPage/ProjectPage.jsx`
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- project-details` (in `tests/`) — covers project header + description + image + tech stack heading, "View Live Site" + "Client GitHub" hrefs and `target=_blank`, Server GitHub/Deploy conditional rendering (present for Echo Diary, absent for Work-Life Balance), active manual steps timeline, admin "User Manuals" section hidden when logged out, and "Project not found" for unknown ID.
 
 ## Validation
 
@@ -180,8 +180,8 @@ End-to-end verification after all tasks complete.
 ### Automated checks
 
 - Server-side: `npm test -- projects` (in `server/`) — covers the GET `/api/projects/:id` contract including the `isActive` filter and step ordering
-- Full server suite: `npm test` (in `server/`)
-- E2E: no spec written yet
+- E2E: `npm test -- project-details` (in `tests/`) — covers public render, conditional Server GitHub/Deploy links, active manual steps timeline, admin section hidden when logged out, and "Project not found" 404 path
+- Full server suite: `npm test` (in `server/`); full E2E suite: `npm test` (in `tests/`)
 
 ### Manual checks (UI)
 
@@ -204,11 +204,13 @@ End-to-end verification after all tasks complete.
 
 ## Current State
 
-Fully implemented on both client and server.
+Fully implemented on both client and server. ProjectPage's catch block now distinguishes 404 (renders "Project not found") from other errors (renders generic message), matching the spec.
 
 **Tests in place:**
 - `server/tests/projects.test.ts` covers GET `/api/projects/:id` (200 with includes, exclusion of inactive manuals, step ordering, 404)
+- `tests/specs/project-details.spec.ts` — 7 E2E tests: project header/description/image/tech-stack heading, "View Live Site" + "Client GitHub" hrefs and `target=_blank`, Server GitHub/Deploy when URLs exist (Echo Diary), Server GitHub/Deploy hidden when empty (Work-Life Balance), active manual title + first step description + first step image, admin "User Manuals" hidden when logged out, "Project not found" on unknown ID
 
 **Untested:**
-- Client `ProjectPage` rendering, conditional Server GitHub/Deploy buttons, loading/error/not-found branches
-- No E2E spec for the project detail page yet
+- Generic error branch ("Failed to load project...") — would need API kill or network throttling
+- Step ordering across all 12 steps (asserted only via step 1 spot-check)
+- Manual list toggling when logged in (covered by manual-management spec)
