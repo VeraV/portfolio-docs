@@ -154,28 +154,28 @@ Relation: Technology belongs to one TechCategory.
 **Files:**
 - `client/src/services/technology.service.js` (lines 24-27)
 
-**Verify:** No tests cover this task yet.
+**Verify:** No dedicated test; indirectly covered by `npm test -- technology-management` (in `tests/`) — the create flow only succeeds if `create()` reaches the API with a valid JWT.
 
 **5. TechCategory Service**
 **What:** Singleton class with axios instance (no JWT interceptor needed). `getAll()` -> GET `/api/tech-category`.
 **Files:**
 - `client/src/services/tech-category.service.js`
 
-**Verify:** No tests cover this task yet.
+**Verify:** No dedicated test; indirectly covered by `npm test -- technology-management` (in `tests/`) — the Category dropdown only populates with the 3 seeded categories if `getAll()` succeeded.
 
 **6. ProjectForm Integration**
 **What:** Fetches tech categories on open. Manages `isTechFormOpen` state. `handleSubmitTechnology` calls `technologyService.create()`, on success closes TechnologyForm and re-fetches technology list. Passes `categories` prop to TechnologyForm.
 **Files:**
 - `client/src/components/ProjectForm/ProjectForm.jsx` (lines 16, 43-52, 110-138)
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- technology-management` (in `tests/`) — covers opening TechnologyForm from the "+" inside TechnologySelector, category list passed through to the dropdown, and the new technology appearing in the TechnologySelector's Available column after `handleSubmitTechnology` succeeds.
 
 **7. TechnologyForm Component**
 **What:** Nested modal form for creating a technology. Fields: name, logo URL (with preview and error handling), official website, category dropdown. Resets on open. On submit calls `onSubmit(formData)`.
 **Files:**
 - `client/src/components/TechnologyForm/TechnologyForm.jsx`
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- technology-management` (in `tests/`) — covers modal open with all four fields visible, logo preview rendering when a URL is entered, full create flow, and Cancel closing the modal without persisting. Invalid-URL preview error and form-validation error surfacing are not asserted.
 
 ## Validation
 
@@ -184,8 +184,8 @@ End-to-end verification after all tasks complete.
 ### Automated checks
 
 - Server-side: `npm test -- technology` (in `server/`) — covers POST `/api/technology` (auth, validation, category include, DB persistence) and GET `/api/tech-category`
-- Full server suite: `npm test` (in `server/`)
-- E2E: no spec written yet
+- E2E: `npm test -- technology-management` (in `tests/`) — covers nested modal opening from inside ProjectForm, the category dropdown populated from the API, logo preview rendering, full create flow with new tech appearing in the TechnologySelector, and Cancel closing without persistence
+- Full server suite: `npm test` (in `server/`); full E2E suite: `npm test` (in `tests/`)
 
 ### Manual checks (UI)
 
@@ -208,11 +208,13 @@ End-to-end verification after all tasks complete.
 
 ## Current State
 
-Fully implemented on both client and server.
+Fully implemented on both client and server. `TechnologyForm`'s name input was renamed from `id="name"` to `id="tech_name"` (with matching `htmlFor`) to avoid colliding with `ProjectForm`'s `id="name"` when both modals are open — duplicate IDs broke label-input association and accessibility.
 
 **Tests in place:**
 - `server/tests/technology.test.ts` — 6 integration tests across POST `/api/technology` (auth, validation, category include) and GET `/api/tech-category` (seeded list)
+- `tests/specs/technology-management.spec.ts` — 4 E2E tests: nested modal opens with all four fields + seeded categories in the dropdown, logo preview renders when a URL is entered, full create flow with new tech appearing in the Available column, Cancel closes without persistence
 
 **Untested:**
-- Client `technologyService.create`, `techCategoryService.getAll`, the TechnologyForm modal (logo preview, validation, submit/cancel), and the ProjectForm integration handler
-- No E2E spec yet
+- Invalid logo URL → "Unable to load image" error (intentionally skipped — depends on image-load failure timing)
+- Server-side missing-field validation surfacing as an alert (HTML5 `required` blocks the submit before the network call)
+- Duplicate-name 500 response and its alert message (server integration covers the API contract)
