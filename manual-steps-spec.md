@@ -179,21 +179,21 @@ Rendered below the last step when `showCreateStepForm` is true. Only available w
 **Files:**
 - `client/src/services/step.service.js`
 
-**Verify:** No tests cover this task yet.
+**Verify:** No dedicated test; indirectly covered by `npm test -- manual-steps` (in `tests/`) — the create and edit flows only succeed if `create()` and `update()` reach the API with the JWT.
 
 **5. StepItem Component**
 **What:** Renders a single step in timeline layout. Manages own `isEditing` state and `editData`. Read mode: step number circle, description (with admin edit button), image, connecting line. Edit mode: textarea, Cloudinary upload, save/cancel buttons. On save calls `stepService.update()` then `onStepUpdated()`.
 **Files:**
 - `client/src/components/StepItem/StepItem.jsx`
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- manual-steps` (in `tests/`) — covers admin pencil visibility per step, edit flow with description change (read → edit → save → back to read), and cancel flow reverting to original. The image-load conditional and connecting-line behaviour on the last step are not directly asserted.
 
 **6. ProjectPage Step Section**
 **What:** Bottom section of ProjectPage. Renders `StepItem` components for each step in the active manual. Admin-only: green "+" button to open create form, inline form with description textarea, Cloudinary upload, and disabled-until-complete save button. Validates active manual exists before creating.
 **Files:**
 - `client/src/pages/ProjectPage/ProjectPage.jsx` (lines 36-41, 144-172, 486-572)
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- manual-steps` (in `tests/`) — covers admin "+ Add new step" button visibility, the create form, the disabled-until-both-filled Save button, and the auto-incremented `step_number` after creation. The "no active manual" alert path is not asserted (would need a project with no active manual).
 
 ## Validation
 
@@ -202,8 +202,8 @@ End-to-end verification after all tasks complete.
 ### Automated checks
 
 - Server-side: `npm test -- steps` (in `server/`) — covers POST/PATCH including the auto-increment logic
-- Full server suite: `npm test` (in `server/`)
-- E2E: no spec written yet
+- E2E: `npm test -- manual-steps` (in `tests/`) — covers admin UI visibility, the add-step flow end-to-end with Cloudinary stubbed (Save disabled until both fields filled; step_number auto-increments), the edit flow, and cancel reverting
+- Full server suite: `npm test` (in `server/`); full E2E suite: `npm test` (in `tests/`)
 
 ### Manual checks (UI)
 
@@ -227,6 +227,9 @@ Fully implemented on both client and server.
 
 **Tests in place:**
 - `server/tests/steps.test.ts` — 7 integration tests covering POST (auth, validation, auto-increment, empty-manual case) and PATCH (auth, validation, immutability of step_number/manualId)
+- `tests/specs/manual-steps.spec.ts` — 4 E2E tests: admin sees Edit pencils on each step + "Add new step" button, add-step flow with Cloudinary stubbed (Save disabled-until-filled + step_number auto-increments to 13), edit-step changes description, cancel reverts
 
 **Untested:**
-- Client `stepService`, `StepItem` component (edit/cancel flow), and the create-step form in ProjectPage
+- "No active manual" alert path (would need a project where no manual is `isActive` — not easy to construct from the seed without an extra setup step)
+- Connecting-line render on the last step (visual, low-value)
+- Invalid Cloudinary image scenarios in the step form (covered by component logic; widget is stubbed)
