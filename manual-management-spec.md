@@ -204,14 +204,14 @@ Relation: Belongs to Project (cascade delete). Has many ManualStep (cascade dele
 **Files:**
 - `client/src/services/manual.service.js`
 
-**Verify:** No tests cover this task yet.
+**Verify:** No dedicated test; indirectly covered by `npm test -- manual-management` (in `tests/`) — the read/create/update/set-active/delete flows only succeed if the corresponding service methods reach the API with the JWT.
 
 **8. ProjectPage Manual Section**
 **What:** Middle section of ProjectPage, only rendered when `isLoggedIn`. Manages state for editing (`editingManualId`, `editFormData`), creating (`showCreateForm`, `createFormData`). Renders manual cards in responsive grid with read/edit modes, radio buttons for active state, and inline create form.
 **Files:**
 - `client/src/pages/ProjectPage/ProjectPage.jsx` (lines 26-33, 70-141, 287-484)
 
-**Verify:** No tests cover this task yet.
+**Verify:** `npm test -- manual-management` (in `tests/`) — covers section visibility for logged-in admin, existing-manual rendering (title, description, version, active radio), inline create flow, inline edit flow, set-active flag swap, and delete with confirm. The cancel-edit and cancel-create branches are not asserted.
 
 ## Validation
 
@@ -220,8 +220,8 @@ End-to-end verification after all tasks complete.
 ### Automated checks
 
 - Server-side: `npm test -- manuals` (in `server/`) — covers all 5 endpoints, including the set-active transaction and delete cascade
-- Full server suite: `npm test` (in `server/`)
-- E2E: no spec written yet
+- E2E: `npm test -- manual-management` (in `tests/`) — covers section visibility, manual rendering, create/edit/delete UI flows, and the set-active flag swap from the user's perspective
+- Full server suite: `npm test` (in `server/`); full E2E suite: `npm test` (in `tests/`)
 
 ### Manual checks (UI)
 
@@ -246,6 +246,9 @@ Fully implemented on both client and server.
 
 **Tests in place:**
 - `server/tests/manuals.test.ts` — 12 integration tests across all 5 endpoints (auth gating, validation, sort order, select-field shape, set-active transaction, delete cascade, isActive preservation on update)
+- `tests/specs/manual-management.spec.ts` — 5 E2E tests: section visibility for admin + existing card rendering on Echo Diary, create a new manual on Yoga Path, edit Work-Life Balance's "Basics" manual, set-active flag swap on Plantastic (both radios flip), delete Echo Diary's "Main" with confirm-accept
 
 **Untested:**
-- Client `manualService` and the ProjectPage manual UI (no component or E2E tests yet)
+- Cancel-create and cancel-edit branches (low-value; they just hide the inline form)
+- Dismiss-delete (pattern already covered in `project-crud.spec.ts`)
+- Form-validation surfacing (the inline inputs don't use HTML5 `required`; missing fields would hit the server's 400)
